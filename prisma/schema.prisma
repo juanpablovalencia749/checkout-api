@@ -13,6 +13,8 @@ model Product {
   price       Float
   stock       Int
   createdAt   DateTime @default(now())
+   transactions Transaction[]
+  // deliveries? optionally
 }
 
 model Customer {
@@ -25,10 +27,22 @@ model Customer {
 
 model Transaction {
   id                String    @id @default(uuid())
-  wompiId           String?   @unique 
+  wompiId           String?   @unique
   amount            Float
-  status            String    @default("PENDING") 
+  status            String    @default("PENDING")
   customerId        String
   customer          Customer  @relation(fields: [customerId], references: [id])
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id])
+  quantity          Int       @default(1)
   createdAt         DateTime  @default(now())
+  // delivery relation if needed
+}
+
+model Delivery {
+  id           String   @id @default(uuid())
+  transactionId String
+  address      String
+  city         String
+  createdAt    DateTime @default(now())
 }
