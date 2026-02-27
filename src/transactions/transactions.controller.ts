@@ -1,3 +1,4 @@
+// src/transactions/transactions.controller.ts
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -6,7 +7,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 export class TransactionsController {
   constructor(private readonly txService: TransactionsService) {}
 
-  @Post()
+  @Post('init')
   async create(@Body() dto: CreateTransactionDto) {
     const tx = await this.txService.create(dto);
     return { success: true, data: tx };

@@ -1,21 +1,35 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+// src/transactions/transactions.service.ts
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
-// import { WompiService } from '../wompi/wompi.service';
 
 @Injectable()
 export class TransactionsService {
   constructor(
     private prisma: PrismaService,
-    // private wompi: WompiService,
+    private paymentsService: PaymentsService,
   ) {}
 
   async create(dto: CreateTransactionDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
-    if (!product) throw new NotFoundException('Product not found');
-    if (product.stock < dto.quantity) throw new BadRequestException('Not enough stock');
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+    });
 
-    let customer = await this.prisma.customer.findUnique({ where: { email: dto.customerEmail } });
+    if (!product) throw new NotFoundException('Product not found');
+    if (product.stock < dto.quantity)
+      throw new BadRequestException('Not enough stock');
+
+    let customer = await this.prisma.customer.findUnique({
+      where: { email: dto.customerEmail },
+    });
+
     if (!customer) {
       customer = await this.prisma.customer.create({
         data: {
@@ -51,6 +65,7 @@ export class TransactionsService {
       where: { id },
       include: { customer: true, product: true },
     });
+
     if (!t) throw new NotFoundException('Transaction not found');
     return t;
   }
@@ -60,48 +75,95 @@ export class TransactionsService {
       where: { id: transactionId },
       include: { product: true, customer: true },
     });
+
     if (!transaction) throw new NotFoundException('Transaction not found');
-    if (transaction.status !== 'PENDING') throw new ConflictException('Transaction already processed');
+    if (transaction.status !== 'PENDING')
+      throw new ConflictException('Transaction already processed');
+
+    if (!paymentPayload?.cardToken || !paymentPayload?.acceptanceToken) {
+      throw new BadRequestException(
+        'cardToken and acceptanceToken are required',
+      );
+    }
 
     const wompiPayload = {
       amount_in_cents: Math.round(transaction.amount * 100),
       currency: 'COP',
+      customer_email: transaction.customer.email,
+      reference: transaction.id,
       payment_method: {
         type: 'CARD',
-        installments: 1,
-        card: paymentPayload.card, 
+        token: paymentPayload.cardToken,
+        installments: paymentPayload.installments || 1,
       },
+      acceptance_token: paymentPayload.acceptanceToken,
     };
 
-    let wompiResponse;
+    let providerResponse;
+
     try {
-    } catch (err) {
+      providerResponse =
+        await this.paymentsService.createPaymentOnProvider(wompiPayload);
+    } catch (err: any) {
+      const errorDetail =
+        err?.response?.data ??
+        err?.message ??
+        err;
+
       await this.prisma.transaction.update({
         where: { id: transactionId },
-        data: { status: 'FAILED' },
+        data: {
+          status: 'FAILED',
+          providerResponse:
+            typeof errorDetail === 'string'
+              ? errorDetail
+              : JSON.stringify(errorDetail),
+        },
       });
-      throw err;
+
+      throw new InternalServerErrorException(
+        'Error processing payment with provider',
+      );
     }
 
-    const wompiId = wompiResponse?.data?.id || wompiResponse?.id || 'wompi-simulated-id';
-    const status = (wompiResponse?.data?.status || 'APPROVED') === 'APPROVED' ? 'COMPLETED' : 'FAILED';
+    const data = providerResponse?.data ?? providerResponse;
+    const providerTx = data?.data ?? data;
+
+    const providerId = providerTx?.id || null;
+    const providerStatus = providerTx?.status || 'FAILED';
+
+    const finalStatus =
+      providerStatus === 'APPROVED' ||
+      providerStatus === 'COMPLETED'
+        ? 'COMPLETED'
+        : 'FAILED';
 
     await this.prisma.transaction.update({
       where: { id: transactionId },
       data: {
-        wompiId,
-        status,
+        wompiId: providerId,
+        status: finalStatus,
+        providerResponse: JSON.stringify(providerResponse),
       },
     });
 
-    if (status === 'COMPLETED') {
+    if (finalStatus === 'COMPLETED') {
       await this.prisma.$transaction(async (prisma) => {
-        const prod = await prisma.product.findUnique({ where: { id: transaction.productId } });
-        if (!prod) throw new NotFoundException('Product not found during stock update');
-        if (prod.stock < transaction.quantity) throw new BadRequestException('Not enough stock at processing time');
+        const product = await prisma.product.findUnique({
+          where: { id: transaction.productId },
+        });
+
+        if (!product)
+          throw new NotFoundException('Product not found');
+
+        if (product.stock < transaction.quantity)
+          throw new BadRequestException('Not enough stock');
+
         await prisma.product.update({
-          where: { id: prod.id },
-          data: { stock: { decrement: transaction.quantity } as any },
+          where: { id: product.id },
+          data: {
+            stock: product.stock - transaction.quantity,
+          },
         });
 
         await prisma.delivery.create({
@@ -114,45 +176,10 @@ export class TransactionsService {
       });
     }
 
-    return { transactionId, status, wompiId };
+    return {
+      transactionId,
+      status: finalStatus,
+      providerId,
+    };
   }
-  async finalizeByProviderReference(reference: string, payload: any) {
-  const transaction = await this.prisma.transaction.findUnique({
-    where: { wompiId: reference },
-    include: { product: true, customer: true },
-  });
-
-  if (!transaction) {
-    throw new NotFoundException(`Transaction not found for reference ${reference}`);
-  }
-
-  const status = payload?.data?.transaction?.status || 'FAILED';
-
-  await this.prisma.transaction.update({
-    where: { id: transaction.id },
-    data: { status },
-  });
-
-  if (status === 'APPROVED' || status === 'COMPLETED') {
-    await this.prisma.$transaction(async (prisma) => {
-      const prod = await prisma.product.findUnique({ where: { id: transaction.productId } });
-      if (!prod) throw new NotFoundException('Product not found during stock update');
-      if (prod.stock < transaction.quantity) throw new BadRequestException('Not enough stock');
-      await prisma.product.update({
-        where: { id: prod.id },
-        data: { stock: { decrement: transaction.quantity } as any },
-      });
-
-      await prisma.delivery.create({
-        data: {
-          transactionId: transaction.id,
-          address: payload?.data?.customer?.address || 'No address',
-          city: payload?.data?.customer?.city || 'Unknown',
-        },
-      });
-    });
-  }
-
-  return { transactionId: transaction.id, status };
-}
 }

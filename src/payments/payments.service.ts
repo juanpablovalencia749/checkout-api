@@ -1,49 +1,33 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import axios from 'axios';
-import * as crypto from 'crypto';
+import { ExternalApiService } from '../external-api/external-api.service';
 
 @Injectable()
 export class PaymentsService {
-  private base = process.env.WOMPI_SANDBOX_URL || 'https://api-sandbox.co.uat.wompi.dev/v1';
-  private privateKey = process.env.WOMPI_PRIVATE_KEY;       
-  private publicKey = process.env.WOMPI_PUBLIC_KEY;         
-  private integrityKey = process.env.WOMPI_INTEGRITY_KEY || process.env.WOMPI_EVENTS_SECRET;
+  constructor(private readonly externalApi: ExternalApiService) {}
 
-  async createWompiTransaction(body: any) {
+  async createPaymentOnProvider(payload: any) {
     try {
-      const url = `${this.base}/transactions`;
-      const res = await axios.post(url, body, {
-        headers: {
-          Authorization: `Bearer ${this.privateKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      return res.data;
-    } catch (err) {
-      console.error('Wompi create transaction error:', err?.response?.data || err?.message || err);
-      throw new InternalServerErrorException('Error calling payment provider');
+      const response = await this.externalApi.createTransaction(payload);
+      return response;
+    } catch (err: any) {
+      const errData =
+        err?.response?.data ??
+        err?.message ??
+        err;
+
+      console.error('[PaymentsService] Provider error:', errData);
+
+      throw new InternalServerErrorException(errData);
     }
   }
 
-
+  // Proxy para obtener datos de merchant / acceptance si lo necesitas
   async getAcceptanceData() {
-    try {
-      const url = `${this.base.replace('/v1','')}/merchants/${this.publicKey}`.replace('//merchants','/merchants'); 
-      const res = await axios.get(`${this.base.replace('/v1','')}/merchants/${this.publicKey}`);
-      return res.data;
-    } catch (err) {
-      return null;
-    }
+    return this.externalApi.getMerchantData();
   }
 
-  verifyWebhookHmac(rawBody: Buffer | string, receivedSignature: string): boolean {
-    if (!this.integrityKey || !receivedSignature) return false;
-
-    const expectedBuffer = crypto.createHmac('sha256', this.integrityKey)
-                                 .update(rawBody)
-                                 .digest();
-    const receivedBuffer = Buffer.from(receivedSignature.trim(), 'hex');
-    if (receivedBuffer.length !== expectedBuffer.length) return false;
-    return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+  // Expone llave integridad por si quieres verificar hmac en webhooks
+  getIntegrityKey() {
+    return this.externalApi.getIntegrityKey();
   }
 }
