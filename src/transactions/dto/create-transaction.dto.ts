@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNumber, IsInt, IsPositive, Min } from 'class-validator';
+import { IsString, IsEmail, IsNumber, IsInt, IsPositive, Min, IsOptional } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsString()
@@ -8,7 +8,6 @@ export class CreateTransactionDto {
   @Min(1)
   quantity: number;
 
-  // Customer
   @IsEmail()
   customerEmail: string;
 
@@ -18,19 +17,12 @@ export class CreateTransactionDto {
   @IsString()
   customerPhone: string;
 
-  // Payment minimal: card number format (fake but structured)
-  @IsString()
-  cardNumber: string;
-
-  @IsString()
-  cardExpMonth: string;
-
-  @IsString()
-  cardExpYear: string;
-
-  @IsString()
-  cardCvv: string;
-
   @IsNumber()
-  amount: number; // total in decimal (COP)
+  amount: number; 
+  
+   @IsString()
+  address: string;
+
+  @IsString()
+  city: string;
 }
