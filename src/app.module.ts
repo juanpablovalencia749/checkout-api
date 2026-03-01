@@ -4,9 +4,10 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PaymentsModule } from './payments/payments.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ExternalApiModule } from './external-api/external-api.module';
+import { DeliveryModule } from './delivery/delivery.module';
 
 @Module({
-  imports: [ ProductsModule,PrismaModule, PaymentsModule, TransactionsModule, ExternalApiModule],
+  imports: [ ProductsModule, PrismaModule, PaymentsModule, TransactionsModule, ExternalApiModule, DeliveryModule],
   controllers: [],
   providers: [],
 })
