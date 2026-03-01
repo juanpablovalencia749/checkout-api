@@ -7,9 +7,9 @@
   "license": "UNLICENSED",
  "scripts": {
   "prisma:generate": "prisma generate",
-  "build": "prisma generate && prisma db push && nest build",
-  "postinstall": "prisma generate",
-  "start": "nest start",
+  "postinstall": "npx prisma generate",
+  "build": "npx prisma generate && nest build",
+  "start": "npx prisma migrate deploy && node dist/main",
   "start:dev": "nest start --watch",
   "start:debug": "nest start --debug --watch",
   "start:prod": "node dist/main",
