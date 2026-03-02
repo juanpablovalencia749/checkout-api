@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ProductsService {
-  // Inyectamos el servicio de Prisma
   constructor(private prisma: PrismaService) {}
 
   async findAll() {

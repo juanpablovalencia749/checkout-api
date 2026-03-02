@@ -1,4 +1,3 @@
-// src/transactions/transactions.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -118,8 +117,6 @@ async processPayment(transactionId: string, paymentPayload: any) {
     },
     acceptance_token: paymentPayload.acceptanceToken,
   };
-
-  console.log('[TransactionsService] Sending payload to provider:', JSON.stringify(wompiPayload));
 
   let providerResponse;
   try {

@@ -55,6 +55,7 @@ describe('DeliveryService', () => {
           transaction: {
             include: {
               customer: true,
+              product: true,
             },
           },
         },
@@ -63,13 +64,13 @@ describe('DeliveryService', () => {
 
       expect(result).toEqual([
         {
-          estado: 'PENDING',
-          direccion: 'Calle 1, Bogota',
+          status: 'PENDING',
+          address: 'Calle 1, Bogota',
           productName: 'Producto X',
-          usuario: 'Juan Perez',
-          correo: 'juan@example.com',
-          cantidad: 2,
-          numeroTransaccion: 'tx1',
+          user: 'Juan Perez',
+          email: 'juan@example.com',
+          quantity: 2,
+          transactionId: 'tx1',
         },
       ]);
     });

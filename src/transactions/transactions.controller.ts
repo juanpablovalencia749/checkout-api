@@ -1,4 +1,3 @@
-// src/transactions/transactions.controller.ts
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';

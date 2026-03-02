@@ -1,11 +1,10 @@
-// src/payments/payments.service.ts
 import {
   Injectable,
   InternalServerErrorException,
   MessageEvent,
 } from '@nestjs/common';
 import { ExternalApiService } from '../external-api/external-api.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 import { Subject, Observable } from 'rxjs';
 

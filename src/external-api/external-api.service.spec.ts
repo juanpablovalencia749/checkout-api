@@ -16,6 +16,7 @@ describe('ExternalApiService', () => {
     process.env.WOMPI_PRIVATE_KEY = 'test_private_key';
     process.env.WOMPI_PUBLIC_KEY = 'test_public_key';
     process.env.WOMPI_API_URL = 'https://fake-url.com/v1';
+    process.env.WOMPI_INTEGRITY_SECRET = 'secret_key';
 
     (axios.create as jest.Mock).mockReturnValue(mockAxiosInstance);
 
@@ -39,11 +40,18 @@ describe('ExternalApiService', () => {
 
     mockAxiosInstance.post.mockResolvedValue(mockResponse);
 
-    const result = await service.createTransaction({ amount: 1000 });
+    // include reference and currency so integrity signature is generated
+    const payload = { amount: 1000, reference: 'ref-1', currency: 'COP' };
+
+    const result = await service.createTransaction(payload);
 
     expect(mockAxiosInstance.post).toHaveBeenCalledWith(
       '/transactions',
-      { amount: 1000 },
+      expect.objectContaining({
+        amount: 1000,
+        reference: 'ref-1',
+        signature: expect.any(String),
+      }),
       {
         headers: {
           Authorization: 'Bearer test_private_key',

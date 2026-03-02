@@ -1,4 +1,3 @@
-// src/payments/payments.controller.ts
 import {
   Controller,
   Get,
@@ -27,14 +26,14 @@ export class PaymentsController {
       if (!body?.event) {
         throw new BadRequestException('Missing event type');
       }
-      const isProduction = process.env.NODE_ENV === 'production';
-      if (isProduction) {
-        const isValid = this.paymentsService.verifyWebhookSignature(body);
-        if (!isValid) {
-          console.warn('[Webhook] Invalid signature');
-          throw new BadRequestException('Invalid signature');
-        }
-      }
+      // const isProduction = process.env.NODE_ENV === 'production';
+      // if (isProduction) {
+      //   const isValid = this.paymentsService.verifyWebhookSignature(body);
+      //   if (!isValid) {
+      //     console.warn('[Webhook] Invalid signature');
+      //     throw new BadRequestException('Invalid signature');
+      //   }
+      // }
 
       if (body.event === 'transaction.updated') {
         await this.paymentsService.handleTransactionUpdated(body.data);

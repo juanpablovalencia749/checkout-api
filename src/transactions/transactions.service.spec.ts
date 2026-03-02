@@ -14,6 +14,7 @@ describe('TransactionsService', () => {
     prismaMock = {
       product: {
         findUnique: jest.fn(),
+        update: jest.fn(),
       },
       customer: {
         findUnique: jest.fn(),

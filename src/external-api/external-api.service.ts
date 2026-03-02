@@ -51,8 +51,6 @@ export class ExternalApiService {
 
       payload.signature = signature;
 
-      console.log('[ExternalApiService] Creating provider transaction with signature:', signature);
-
       const res = await this.client.post('/transactions', payload, {
         headers: {
           Authorization: `Bearer ${this.privateKey}`,

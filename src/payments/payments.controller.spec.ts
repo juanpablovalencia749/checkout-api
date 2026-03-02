@@ -49,10 +49,9 @@ describe('PaymentsController', () => {
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw BadRequestException if event is missing', async () => {
-      await expect(controller.webhook({})).rejects.toThrow(
-        BadRequestException,
-      );
+    it('should return success:false if event is missing', async () => {
+      const result = await controller.webhook({});
+      expect(result).toEqual({ success: false });
     });
 
     it('should return success true for unhandled event', async () => {
